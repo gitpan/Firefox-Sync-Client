@@ -104,7 +104,7 @@ use Mcrypt qw( :ALGORITHMS :MODES );
 use JSON;
 use LWP::UserAgent;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(new get_raw_collection get_addons get_bookmarks get_clients get_forms get_history get_meta get_passwords get_prefs get_tabs);

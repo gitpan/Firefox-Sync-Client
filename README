@@ -1,4 +1,4 @@
-Firefox Sync Client version 0.01
+Firefox Sync Client version 0.02
 ================================
 
 This module provides an API to connect to a Firefox Sync Server.
@@ -26,13 +26,6 @@ You will need the following modules and their dependencies from CPAN:
     LWP::UserAgent
     MIME::Base32
     MIME::Base64
-
-
-EXAMPLES
-
-After installation, you can find examples in the documentation. Call it with:
-
-    perldoc Firefox::Sync::Client
 
 
 COPYRIGHT AND LICENSE
