@@ -100,11 +100,11 @@ use utf8;
 use MIME::Base32 qw( RFC );
 use MIME::Base64;
 use Digest::SHA qw( sha1 hmac_sha256 );
-use Mcrypt qw( :ALGORITHMS :MODES );
+use Crypt::Rijndael;
 use JSON;
 use LWP::UserAgent;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(new get_raw_collection get_addons get_bookmarks get_clients get_forms get_history get_meta get_passwords get_prefs get_tabs);
@@ -136,6 +136,11 @@ sub new {
 
     # Construct user name
     $self->{'username'} = lc(MIME::Base32::encode(sha1(lc($self->{'username'})))) if ($self->{'username'} =~ /[^A-Z0-9._-]/i);
+
+    # Extract hostname and port from URL
+    $self->{'base_url'} =~ /^(http|https):\/\/([^:\/]*):?(\d+)?/ or die 'Invalid URL format';
+    $self->{'hostname'} = $2;
+    $self->{'port'}     = ( $3 ? $3 : ( $1 eq 'http' ? '80' : '443' ) );
 
     # Construct base url
     $self->{'base_url'} .= '/' unless $self->{'base_url'} =~ /\/$/;
@@ -353,14 +358,10 @@ sub fetch_bulk_keys {
 sub decrypt_payload {
     my ($self, $payload, $key) = @_;
 
-    my $c = Mcrypt->new(
-        algorithm => Mcrypt::RIJNDAEL_128,
-        mode      => Mcrypt::CBC,
-        verbose   => 0,
-    );
-    $c->init($key, decode_base64($payload->{'IV'}));
-    my $data = $c->decrypt(decode_base64($payload->{'ciphertext'}));
+    my $c = Crypt::Rijndael->new($key, Crypt::Rijndael::MODE_CBC());
+    $c->set_iv(decode_base64($payload->{'IV'}));
 
+    my $data = $c->decrypt(decode_base64($payload->{'ciphertext'}));
     $data = repair_json($self, $data);
 
     return $data;
@@ -389,9 +390,9 @@ sub fetch_json {
     my ($self, $url) = @_;
     my $ua = LWP::UserAgent->new;
     $ua->agent ("FFsyncClient/0.1 ");
-    $ua->credentials ( 'ffsync.noc.ruhr-uni-bochum.de:443', 'Sync', $self->{'username'} => $self->{'password'} );
+    $ua->credentials ( $self->{'hostname'} . ':' . $self->{'port'}, 'Sync', $self->{'username'} => $self->{'password'} );
     my $res = $ua->get($url);
-    #die $res->headers['http_code'] if ($res->headers['http_code'] != 200);
+    die $res->{'_msg'} if ($res->{'_rc'} != '200');
     return decode_json($res->content);
 }
 

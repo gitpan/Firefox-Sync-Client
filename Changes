@@ -6,3 +6,7 @@ Revision history for Perl extension Firefox::Sync::Client.
 0.02  Fri Aug 17 20:46:07 2012
         - Added prerequisites to Makefile.PM
 
+0.03  Tue Sep 11 21:56:04 2012
+        - Added dependency to 'LWP::Protocol::https' in Makefile.PL and README
+        - Removed static host and port of test server in LWP credentials 
+        - Changed from usage of Mcrypt to Crypt::Rijndael for data decryption

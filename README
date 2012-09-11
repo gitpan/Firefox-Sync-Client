@@ -1,4 +1,4 @@
-Firefox Sync Client version 0.02
+Firefox Sync Client version 0.03
 ================================
 
 This module provides an API to connect to a Firefox Sync Server.
@@ -21,11 +21,20 @@ DEPENDENCIES
 You will need the following modules and their dependencies from CPAN:
 
     Digest::SHA
-    Mcrypt
+    Crypt::Rijndael
     JSON
     LWP::UserAgent
+    LWP::Protocol::https
     MIME::Base32
     MIME::Base64
+
+
+EXAMPLES
+
+After installation, you can find examples in the pod documentation of the
+module. Call it with:
+
+    perldoc Firefox::Sync::Client
 
 
 COPYRIGHT AND LICENSE
