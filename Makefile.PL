@@ -12,6 +12,7 @@ WriteMakefile(
         'JSON'                 => 0,
         'LWP::UserAgent'       => 0,
         'LWP::Protocol::https' => 0,
+        'Storable'             => 0,
     },
     ($] >= 5.005 ?    # Add these new keywords supported since 5.005
         (ABSTRACT_FROM => 'lib/Firefox/Sync/Client.pm', # retrieve abstract from module

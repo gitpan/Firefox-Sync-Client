@@ -26,17 +26,18 @@ Simple example:
       print "\n";
   }
 
-Advanced example, printing HTML code with all bookmarks and links:
+Advanced example, printing HTML code with all bookmarks and links. Results will be cached:
 
   use Firefox::Sync::Client;
   use utf8;
   binmode STDOUT, ':encoding(UTF-8)';
 
   my $c = new Firefox::Sync::Client(
-      URL      => 'https://your.ffsync-server.org/',
-      User     => 'your@mail.address',
-      Password => 'SyncPassword',
-      SyncKey  => 'x-thisx-isxxx-thexx-secre-txkey',
+      URL       => 'https://your.ffsync-server.org/',
+      User      => 'your@mail.address',
+      Password  => 'SyncPassword',
+      SyncKey   => 'x-thisx-isxxx-thexx-secre-txkey',
+      CacheFile => '/tmp/ffsync-cache',
   );
   
   my $bm = $c->get_bookmarks;
@@ -103,8 +104,9 @@ use Digest::SHA qw( sha1 hmac_sha256 );
 use Crypt::Rijndael;
 use JSON;
 use LWP::UserAgent;
+use Storable;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(new get_raw_collection get_addons get_bookmarks get_clients get_forms get_history get_meta get_passwords get_prefs get_tabs);
@@ -116,10 +118,12 @@ our @EXPORT = qw(new get_raw_collection get_addons get_bookmarks get_clients get
 Constructor. You can set the following parameters during construction:
 
   ProtocolVersion - defaults to 1.1
+  URL             - The server address
   User            - The username or e-mail address
   Password        - The password
   SyncKey         - The sync/recovery key
-  URL             - The server address
+  CacheFile       - A file to be used for caching
+  CacheLifetime   - Lifetime of cached requests in seconds
 
 =cut
 
@@ -133,6 +137,8 @@ sub new {
     $self->{'password'}         = $args{'Password'}        || '';
     $self->{'sync_key'}         = $args{'SyncKey'}         || '';
     $self->{'base_url'}         = $args{'URL'}             || '';
+    $self->{'cachefile'}        = $args{'CacheFile'}       || undef;
+    $self->{'cachelifetime'}    = $args{'CacheLifetime'}   || 300;
 
     # Construct user name
     $self->{'username'} = lc(MIME::Base32::encode(sha1(lc($self->{'username'})))) if ($self->{'username'} =~ /[^A-Z0-9._-]/i);
@@ -148,6 +154,12 @@ sub new {
 
     # Prepare hash for keys
     $self->{'bulk_keys'} = {};
+
+    # Prepare temp file if used
+    if (defined $self->{'cachefile'}) {
+        open TF, '>>', $self->{'cachefile'};
+        close TF;
+    }
 
     bless($self, $class);
     return $self;
@@ -388,12 +400,46 @@ sub decrypt_collection {
 
 sub fetch_json {
     my ($self, $url) = @_;
+    my $res;
+
+    if (defined $self->{'cachefile'}) {
+        $self->{'cache'} = retrieve($self->{'cachefile'}) unless (-z $self->{'cachefile'});
+
+        if (defined $self->{'cache'}->{$url} and (time - $self->{'cache'}->{$url . '_ts'} <= $self->{'cachelifetime'})) {
+            # We have a cache hit, so simply return it
+            return decode_json($self->{'cache'}->{$url}->content);
+        }
+        else {
+            # Really do the request
+            $res = really_fetch_json($self, $url);
+
+            # Cache the request
+            $self->{'cache'}->{$url}         = $res;
+            $self->{'cache'}->{$url . '_ts'} = time;
+            store($self->{'cache'}, $self->{'cachefile'});
+        }
+    }
+    else {
+        # We don't have a cache file, so simply request the data and return it
+        $res = really_fetch_json($self, $url);
+    }
+
+    return decode_json($res->content);
+}
+
+sub really_fetch_json {
+    my ($self, $url) = @_;
+
+    # Initialize LWP
     my $ua = LWP::UserAgent->new;
     $ua->agent ("FFsyncClient/0.1 ");
     $ua->credentials ( $self->{'hostname'} . ':' . $self->{'port'}, 'Sync', $self->{'username'} => $self->{'password'} );
+
+    # Do the request
     my $res = $ua->get($url);
     die $res->{'_msg'} if ($res->{'_rc'} != '200');
-    return decode_json($res->content);
+
+    return $res;
 }
 
 sub repair_json {

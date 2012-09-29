@@ -1,10 +1,12 @@
-Firefox Sync Client version 0.03
+Firefox Sync Client version 0.04
 ================================
 
 This module provides an API to connect to a Firefox Sync Server.
 
 For now it is only possible to get a collection of things from the server.
 Later it will also be possible to change items on the server.
+
+Requests to the server can be cached in a temporary file.
 
 INSTALLATION
 
@@ -27,6 +29,7 @@ You will need the following modules and their dependencies from CPAN:
     LWP::Protocol::https
     MIME::Base32
     MIME::Base64
+    Storable
 
 
 EXAMPLES
